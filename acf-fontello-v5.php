@@ -1,7 +1,8 @@
 <?php
 
-class acf_field_FIELD_NAME extends acf_field {
+class acf_field_fontello extends acf_field {
 	
+	var $fontello_dir, $settings, $font_config;
 	
 	/*
 	*  __construct
@@ -18,25 +19,37 @@ class acf_field_FIELD_NAME extends acf_field {
 	
 	function __construct() {
 		
+		$this->fontello_dir = 'fontello-add93657';
+
 		/*
 		*  name (string) Single word, no spaces. Underscores allowed
 		*/
 		
-		$this->name = 'FIELD_NAME';
+		$this->name = 'fontello';
 		
 		
 		/*
 		*  label (string) Multiple words, can include spaces, visible when selecting a field type
 		*/
 		
-		$this->label = __('FIELD_LABEL', 'acf-FIELD_NAME');
+		$this->label = __('ACF Fontello', 'acf-fontello');
 		
 		
 		/*
 		*  category (string) basic | content | choice | relational | jquery | layout | CUSTOM GROUP NAME
 		*/
 		
-		$this->category = 'basic';
+		$this->category = 'content';
+
+		
+		// Fontello Settings
+		$this->settings = array(
+			'version' 	=> 	'1.0.0',
+			'dir' 		=> 	plugin_dir_url( __FILE__ ),
+			'path'		=>	dirname(__FILE__),			
+			'config' 	=> 	dirname(__FILE__) . '/lib/' . $this->fontello_dir . '/config.json',			
+			'icons'		=>	plugin_dir_url( __FILE__ ) . 'lib/' . $this->fontello_dir . '/css/fontello.css'
+		);	
 		
 		
 		/*
@@ -44,23 +57,73 @@ class acf_field_FIELD_NAME extends acf_field {
 		*/
 		
 		$this->defaults = array(
-			'font_size'	=> 14,
+			'allow_null' 			=>	0,
+			'enqueue_fontello' 		=>	0,
+			'save_format'			=>  'element',
+			'default_value'			=>	'',
+			'fontello_preview'		=>	'',
+			'choices'				=>	$this->get_fonts()
 		);
-		
+
+
+			
 		
 		/*
 		*  l10n (array) Array of strings that are used in JavaScript. This allows JS strings to be translated in PHP and loaded via:
-		*  var message = acf._e('FIELD_NAME', 'error');
+		*  var message = acf._e('fontello', 'error');
 		*/
 		
 		$this->l10n = array(
-			'error'	=> __('Error! Please enter a higher value', 'acf-FIELD_NAME'),
+			'error'	=> __('Error! Please enter a higher value', 'acf-fontello'),
 		);
-		
 				
+		add_action( 'admin_enqueue_scripts', array( $this, 'load_fontello' ) );
+
 		// do not delete!
     	parent::__construct();
     	
+	}
+
+	function get_fonts()
+	{		
+
+		if ( is_admin() ){
+			$config_file = @file_get_contents( $this->settings['config'] );			
+			$this->font_config = @json_decode( $config_file, true );
+
+			foreach( $this->font_config['glyphs'] as $key => $fonts ){												
+				$fontellos[$fonts['css']] = '&#x' . ltrim( $fonts['code'], '\\') . '; ' . $fonts['css'];
+			}
+			return $fontellos;
+		}
+		/*
+		require_once ( dirname( __FILE__ ) . '/better-font-awesome-library/better-font-awesome-library.php' );
+
+		$args = array(
+			'version'				=> 'latest',
+			'minified'				=> true,
+			'remove_existing_fa'	=> false,
+			'load_styles'			=> false,
+			'load_admin_styles'		=> false,
+			'load_shortcode'		=> false,
+			'load_tinymce_plugin'	=> false
+		);
+
+		$bfa 		= Better_Font_Awesome_Library::get_instance( $args );
+		$bfa_icons	= $bfa->get_icons();
+		$bfa_prefix	= $bfa->get_prefix() . '-';
+		$new_icons	= array();
+
+		$this->stylesheet	= $bfa->get_stylesheet_url();
+		$this->version		= $bfa->get_version();
+
+		foreach ( $bfa_icons as $hex => $class ) {
+			$unicode = '&#x' . ltrim( $hex, '\\') . ';';
+			$new_icons[ $bfa_prefix . $class ] = $unicode . ' ' . $bfa_prefix . $class;
+		}
+
+		return $new_icons;
+		*/
 	}
 	
 	
@@ -77,8 +140,7 @@ class acf_field_FIELD_NAME extends acf_field {
 	*  @return	n/a
 	*/
 	
-	function render_field_settings( $field ) {
-		
+	function render_field_settings( $field ) {				
 		/*
 		*  acf_render_field_setting
 		*
@@ -90,11 +152,12 @@ class acf_field_FIELD_NAME extends acf_field {
 		*/
 		
 		acf_render_field_setting( $field, array(
-			'label'			=> __('Font Size','acf-FIELD_NAME'),
-			'instructions'	=> __('Customise the input font size','acf-FIELD_NAME'),
-			'type'			=> 'number',
-			'name'			=> 'font_size',
-			'prepend'		=> 'px',
+			'label'			=> __('Default Icon','acf-font-awesome'),
+			'instructions'	=> '',
+			'type'			=> 'select',
+			'name'			=> 'default_value',
+			'class'	  		=>  'fontawesome',
+			'choices'		=>	$field['choices']
 		));
 
 	}
@@ -137,6 +200,12 @@ class acf_field_FIELD_NAME extends acf_field {
 		<input type="text" name="<?php echo esc_attr($field['name']) ?>" value="<?php echo esc_attr($field['value']) ?>" style="font-size:<?php echo $field['font_size'] ?>px;" />
 		<?php
 	}
+
+	function load_fontello(  ){
+		// register & include CSS
+		wp_register_style( 'acf-input-fontello', $this->settings['icons'] ); 
+		wp_enqueue_style('acf-input-fontello');
+	}
 	
 		
 	/*
@@ -153,7 +222,7 @@ class acf_field_FIELD_NAME extends acf_field {
 	*  @return	n/a
 	*/
 
-	/*
+	
 	
 	function input_admin_enqueue_scripts() {
 		
@@ -161,18 +230,19 @@ class acf_field_FIELD_NAME extends acf_field {
 		
 		
 		// register & include JS
-		wp_register_script( 'acf-input-FIELD_NAME', "{$dir}js/input.js" );
-		wp_enqueue_script('acf-input-FIELD_NAME');
+		/*
+		wp_register_script( 'acf-input-fontello', "{$dir}js/input.js" );
+		wp_enqueue_script('acf-input-fontello');
+		*/
 		
 		
 		// register & include CSS
-		wp_register_style( 'acf-input-FIELD_NAME', "{$dir}css/input.css" ); 
-		wp_enqueue_style('acf-input-FIELD_NAME');
+		wp_register_style( 'acf-input-fontello', $this->settings['icons'] ); 
+		wp_enqueue_style('acf-input-fontello');
 		
 		
-	}
+	}	
 	
-	*/
 	
 	
 	/*
@@ -427,7 +497,7 @@ class acf_field_FIELD_NAME extends acf_field {
 		// Advanced usage
 		if( $value < $field['custom_minimum_setting'] )
 		{
-			$valid = __('The value is too little!','acf-FIELD_NAME'),
+			$valid = __('The value is too little!','acf-fontello'),
 		}
 		
 		
@@ -541,6 +611,6 @@ class acf_field_FIELD_NAME extends acf_field {
 
 
 // create field
-new acf_field_FIELD_NAME();
+new acf_field_fontello();
 
 ?>
